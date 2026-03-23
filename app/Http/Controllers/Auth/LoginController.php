@@ -16,6 +16,17 @@ class LoginController extends Controller
 
     public function store(Request $request)
     {
-        return redirect()->route('home');
+        $credentials = $request->validate([
+            'email' => ['required', 'email'],
+            'password' => ['required'],
+        ]);
+        if (Auth::attempt($credentials)) {
+            $request->session()->regenerate();
+
+            return redirect()->intended('home');
+        }
+        return back()->withErrors([
+            'email' => 'Wrong email or password.',
+        ])->only Input('email');
     }
 }
