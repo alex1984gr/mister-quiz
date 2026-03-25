@@ -2,14 +2,12 @@
 
 @section('content')
 
-<form action="{{ route('quiz', $quiz) }}" method="post">
+<form action="{{ route('quiz') }}" method="post">
     @csrf
 
-    @if ($quiz)
-    @foreach ($quiz['questions'] as $question)
-    <x-question :question="$question" />
+    @foreach ($questions as $question)
+        <x-question :question="$question" />
     @endforeach
-    @endif
 
     <button type="submit" class="center green-btn">Submit</button>
 </form>

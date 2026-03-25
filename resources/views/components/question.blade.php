@@ -8,7 +8,7 @@
             <label class= "answer-option">
                 <input
                     type="radio"
-                    name="answer-{{ $question->id }}"
+                    name="{{ $question->id }}"
                     value="{{ $answer->answer }}"
                 >
                 {{ $answer->answer }}

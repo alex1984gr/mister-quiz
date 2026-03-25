@@ -19,16 +19,15 @@ class ProfileController extends Controller
 
         $stats = [];
 
-        foreach ($categories as $cat)
+        foreach ($categories as $cat) {
             [$correct, $total] = explode('/', $user->$cat);
-
-        $percentage = $total > 0 ? round(($correct / $total) * 100, 2) : 0;
-
-        $stats[$cat] = [
-            'correct' => (int)$correct,
-            'total' => (int)$total,
-            'percentage' => $percentage
-        ];
+            $percentage = $total > 0 ? round(($correct / $total) * 100, 2) : 0;
+            $stats[$cat] = [
+                'correct' => (int)$correct,
+                'total' => (int)$total,
+                'percentage' => $percentage
+            ];
+        }
 
         $xp = $user->xp;
 
@@ -42,11 +41,10 @@ class ProfileController extends Controller
             $rank = 'Quiz Master';
         }
 
-        return view ('profile',[
+        return view('profile', [
             'user' => $user,
             'stats' => $stats,
             'rank' => $rank
-        ])
-
+        ]);
     }
 }
