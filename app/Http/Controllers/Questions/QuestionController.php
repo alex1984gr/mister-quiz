@@ -13,69 +13,102 @@ class QuestionController extends Controller
 {
     public function index(Request $request)
     {
-        if ($request->user()) {
+        if (!Auth::check()) {
+            return redirect()->route('login');
+        }
+
+        if ($request->session()->has('quiz_questions')) {
+            $questions = $request->session()->get('quiz_questions');
+        } else {
+
             $categories = ['History', 'Art', 'Geography', 'Science', 'Sports'];
             $questions = [];
 
-            //getting 4 random questions from each category
             foreach ($categories as $cat) {
-                $query_questions = Question::inRandomOrder()->where('category', $cat)->limit(4)->get();
-                foreach ($query_questions as $qq) {
-                    array_push($questions, $qq);
+                $query = Question::where('category', $cat)
+                    ->inRandomOrder()
+                    ->limit(4)
+                    ->get();
+
+                foreach ($query as $q) {
+                    $questions[] = $q;
                 }
             }
 
             shuffle($questions);
-        } else {
+
+            $request->session()->put('quiz_questions', $questions);
         }
 
-        return view('questions.list');
+        return view('questions.list', compact('questions'));
     }
-
-
 
 
     public function results(Request $request)
     {
-        //get quiz from DB
-        $quiz = Quiz::where('id', $request->quiz)->get()->first();
-        $request = $request->all();
-        //makes quiz completed
-        $quiz['completed'] = 1;
+        if (!Auth::check()) {
+            return redirect()->route('login');
+        }
 
-        $results = array('overall' => 0, 'art' => 0, 'geography' => 0, 'history' => 0, 'science' => 0, 'sports' => 0);
+        $answers = $request->all();
+
+        if (!$request->session()->has('quiz_questions')) {
+            return redirect()->route('quiz');
+        }
+
+        $questions = $request->session()->get('quiz_questions');
+
+        foreach ($questions as $q) {
+            if (!isset($answers[$q->id])) {
+                return back()->withErrors(['error' => 'Answer all questions']);
+            }
+        }
+
+        $results = [
+            'overall' => 0,
+            'art' => 0,
+            'geography' => 0,
+            'history' => 0,
+            'science' => 0,
+            'sports' => 0
+        ];
+
         $xp = 0;
 
-        //figuring out which answers are correct
-        foreach ($request as $key => $value) {
-            if (is_numeric($key)) {
-                $correct_answer = Answer::where('question_id', $key)->where('correct', 1)->get()->first()['answer'];
-                if ($correct_answer == $value) {
-                    $question = Question::where('id', $key)->get()->first();
-                    $results['overall']++;
-                }
+        foreach ($questions as $q) {
+            $userAnswer = $answers[$q->id];
+
+            $correct = Answer::where('question_id', $q->id)
+                ->where('correct', 1)
+                ->first();
+
+            if ($correct && $correct->answer == $userAnswer) {
+
+                $results['overall']++;
+
+                $category = strtolower($q->category);
+                $results[$category]++;
+
+                $xp += 10;
             }
         }
 
-        //adding xp to the 
-        Auth::user()['xp'] += $xp;
+        $user = Auth::user();
 
-        //adding categories score to the user
+
+        $user->xp += $xp;
+
         foreach ($results as $key => $value) {
             if ($key != 'overall') {
-                [$correct, $total] = [explode("/", Auth::user()[$key])[0], explode("/", Auth::user()[$key])[1]];
-                Auth::user()[$key] = ($correct + $value) . "/" . ($total + 4);
+                [$correct, $total] = explode("/", $user->$key);
+                $user->$key = ($correct + $value) . "/" . ($total + count($questions) / 5);
             }
         }
 
-        //adding xp to the user
-        Auth::user()['xp'] += $xp;
+        $user->save();
 
-        //save changes in DB
-        Auth::user()->save();
-        $quiz->save();
+        $request->session()->forget('quiz_questions');
 
-
-        return view('questions.results', ['results' => $results]);
+        return view('questions.results', compact('results', 'xp'));
     }
 }
