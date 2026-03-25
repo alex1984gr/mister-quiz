@@ -2,23 +2,51 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class ProfileController extends Controller
 {
     public function index()
     {
+        if (!Auth::check()) {
+            return redirect()->route('login');
+        }
+        // Get the authenticated user
+        $user = Auth::user();
 
-        $user = Auth()->user();
+        //categories
+        $categories = ['art', 'geography', 'history', 'science', 'sports'];
 
-        //variables that will be used to display user score in each category
-        $art = [];
-        $geography = [];
-        $history = [];
-        $science = [];
-        $sports = [];
+        $stats = [];
 
-        return view('profile', ['art' => $art, 'geography' => $geography, 'history' => $history, 'science' => $science, 'sports' => $sports]);
+        foreach ($categories as $cat)
+            [$correct, $total] = explode('/', $user->$cat);
+
+        $percentage = $total > 0 ? round(($correct / $total) * 100, 2) : 0;
+
+        $stats[$cat] = [
+            'correct' => (int)$correct,
+            'total' => (int)$total,
+            'percentage' => $percentage
+        ];
+
+        $xp = $user->xp;
+
+        if ($xp < 1500) {
+            $rank = 'Quiz Apprentice';
+        }elseif ($xp < 5000) {
+            $rank = ' Average Quizzer';
+        }elseif ($xp < 10000) {
+            $rank = 'Epic Quizzer';
+        }else {
+            $rank = 'Quiz Master';
+        }
+
+        return view ('profile',[
+            'user' => $user,
+            'stats' => $stats,
+            'rank' => $rank
+        ])
+
     }
 }
